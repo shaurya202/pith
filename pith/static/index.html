@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pith</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%23f4efe6' d='M0 0h32v32H0z'/%3E%3Cpath fill='%23ff4d1c' d='M0 18 18 0h14L0 32z'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <div id="progress" class="progress" hidden>
+    <div class="progress-track"><div id="progress-bar"></div></div>
+    <p id="progress-label"></p>
+  </div>
+
+  <header class="top">
+    <div class="brand">
+      <span class="mark" aria-hidden="true"></span>
+      <div>
+        <p class="wordmark">pith</p>
+        <p class="tag">cut the pauses</p>
+      </div>
+    </div>
+    <p id="project-meta" class="meta"></p>
+    <div class="top-actions">
+      <button id="open-button" class="btn" type="button">Open a video</button>
+      <input id="file-input" type="file" accept="video/mp4,video/quicktime,.mp4,.mov,.m4v" hidden>
+    </div>
+  </header>
+
+  <main id="empty" class="empty">
+    <div class="empty-copy">
+      <p class="kicker">Free alternative to Submagic</p>
+      <h1>Cut the pauses.<br>Keep your style.</h1>
+      <p class="lede">
+        Drop in a talking-head video. Pith transcribes it on this computer,
+        shows you the dead air before removing it, and burns captions into
+        the file. Nothing is uploaded.
+      </p>
+    </div>
+    <div id="drop" class="drop" tabindex="0" role="button" aria-label="Choose a video">
+      <p class="drop-title">Drop an mp4 or mov</p>
+      <p class="drop-sub">Vertical or horizontal. A minute or two is a good start.</p>
+    </div>
+    <button id="sample-button" class="btn paper" type="button">Use the sample clip</button>
+    <section id="recent-wrap" class="recent" hidden>
+      <h2>Recent</h2>
+      <ul id="recent"></ul>
+    </section>
+    <ol class="steps">
+      <li><span>01</span> Whisper writes a word-level transcript locally.</li>
+      <li><span>02</span> Pauses longer than your threshold are marked, not deleted yet.</li>
+      <li><span>03</span> Pick a caption look, fix a typo, export an mp4.</li>
+    </ol>
+  </main>
+
+  <main id="editor" class="workspace" hidden>
+    <section class="stage-col">
+      <div class="player-bar">
+        <div class="modes" role="tablist">
+          <button id="mode-source" class="mode on" type="button">Original</button>
+          <button id="mode-preview" class="mode" type="button" disabled>Preview</button>
+          <button id="mode-export" class="mode" type="button" disabled>Export</button>
+        </div>
+        <label class="skip"><input id="skip-cuts" type="checkbox" checked> Skip pauses while playing</label>
+      </div>
+      <div id="frame" class="frame">
+        <video id="player" controls playsinline preload="metadata"></video>
+        <div id="overlay" class="caption-overlay bottom" aria-hidden="true"></div>
+      </div>
+      <p id="overlay-note" class="hint">On-screen words are a live preview. Export burns the same words into the file.</p>
+      <div class="timeline-wrap">
+        <canvas id="timeline" height="84" aria-label="Timeline"></canvas>
+        <div class="timeline-legend">
+          <span id="time-label">0:00.0</span>
+          <span>Hatched stretches will be cut</span>
+          <span id="time-end">0:00.0</span>
+        </div>
+      </div>
+      <div class="transcript-head">
+        <h2>Transcript</h2>
+        <p id="note" class="hint"></p>
+      </div>
+      <div id="transcript" class="transcript"></div>
+    </section>
+
+    <aside class="side-col">
+      <section class="card">
+        <div class="card-head">
+          <h2>Transcribe</h2>
+          <p id="language-label" class="hint"></p>
+        </div>
+        <div class="row">
+          <label>Model
+            <select id="model">
+              <option value="tiny">Tiny · fastest</option>
+              <option value="base" selected>Base · a good first try</option>
+              <option value="small">Small · slower, clearer</option>
+            </select>
+          </label>
+          <label>Language
+            <select id="language"></select>
+          </label>
+        </div>
+        <p class="hint">The first run downloads the model (tiny is about 75 MB, base about 150 MB). After that it works offline.</p>
+        <button id="transcribe" class="btn primary" type="button">Transcribe on this computer</button>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>Pauses</h2>
+          <p id="stats" class="stat"></p>
+        </div>
+        <label class="slider">Threshold <b id="threshold-value">0.40s</b>
+          <input id="threshold" type="range" min="0.10" max="1.50" step="0.05" value="0.40">
+        </label>
+        <p class="hint">Gaps between words longer than this are cut. Shorter ones stay, on purpose.</p>
+        <label class="slider">Padding <b id="padding-value">0.08s</b>
+          <input id="padding" type="range" min="0" max="0.30" step="0.01" value="0.08">
+        </label>
+        <p class="hint">A little picture kept on each side of a cut, so the jump doesn’t land on a consonant.</p>
+        <p id="energy-note" class="hint"></p>
+        <ul id="cut-list" class="span-list"></ul>
+        <ul id="loud-list" class="span-list"></ul>
+        <ul id="restored-list" class="span-list"></ul>
+        <ul id="forced-list" class="span-list"></ul>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>Captions</h2>
+        </div>
+        <div id="presets" class="presets"></div>
+        <p id="preset-blurb" class="hint"></p>
+        <div class="row">
+          <label>Font
+            <select id="font"></select>
+          </label>
+          <label>Position
+            <select id="position">
+              <option value="bottom">Bottom</option>
+              <option value="middle">Middle</option>
+              <option value="top">Top</option>
+            </select>
+          </label>
+        </div>
+        <label class="slider">Size <b id="font-size-value">104</b>
+          <input id="font-size" type="range" min="36" max="140" step="2" value="104">
+        </label>
+        <label class="slider">Words per line <b id="words-value">3</b>
+          <input id="words-per-line" type="range" min="1" max="8" step="1" value="3">
+        </label>
+        <div class="row colors">
+          <label>Text <input id="text-color" type="color" value="#ffffff"></label>
+          <label>Highlight <input id="highlight-color" type="color" value="#e6ff3a"></label>
+          <label class="check"><input id="uppercase" type="checkbox" checked> Uppercase</label>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>Match a reference</h2>
+        </div>
+        <p class="hint">Optional. Pith looks at a reel you like and guesses position, rough colors, and pacing. It does not copy the font or the animation.</p>
+        <div class="row">
+          <button id="reference-button" class="btn" type="button">Choose a reel</button>
+          <button id="reference-sample" class="btn" type="button">Use the sample reference</button>
+          <input id="reference-file" type="file" accept="video/mp4,video/quicktime,.mp4,.mov,.m4v" hidden>
+        </div>
+        <ul id="reference-notes" class="notes"></ul>
+        <button id="reference-apply" class="btn" type="button" hidden>Start from these guesses</button>
+      </section>
+
+      <section class="card export-card">
+        <div class="card-head">
+          <h2>Export</h2>
+        </div>
+        <div class="aspects">
+          <label><input type="radio" name="aspect" value="9:16" checked> 9:16 center crop</label>
+          <label><input type="radio" name="aspect" value="original"> Original frame</label>
+        </div>
+        <p id="aspect-note" class="hint">Horizontal video is center-cropped. The sides are cut off.</p>
+        <div class="row">
+          <button id="preview-button" class="btn" type="button">Render preview</button>
+          <button id="export-button" class="btn paper" type="button">Export mp4</button>
+        </div>
+        <p id="export-result" class="hint"></p>
+        <a id="download" class="btn" hidden download>Download the mp4</a>
+      </section>
+    </aside>
+  </main>
+
+  <p id="toast" class="toast" role="status" hidden></p>
+  <script src="/static/app.js"></script>
+</body>
+</html>

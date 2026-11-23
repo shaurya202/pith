@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pith"
+version = "0.1.0"
+description = "Free alternative to Submagic: cut pauses and burn styled captions on your own computer."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [{name = "Pith contributors"}]
+keywords = ["video", "captions", "subtitles", "whisper", "shorts", "reels"]
+dependencies = [
+    "faster-whisper>=1.1.1",
+    "fastapi>=0.115",
+    "uvicorn>=0.32",
+    "python-multipart>=0.0.9",
+    "numpy>=1.26",
+    "imageio-ffmpeg>=0.5.1",
+    "pywebview>=5.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+package = ["pyinstaller>=6"]
+
+[project.scripts]
+pith = "pith.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["pith*"]
+
+[tool.setuptools.package-data]
+pith = ["static/*", "fonts/*", "fonts/licenses/*", "samples/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
