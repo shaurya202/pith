@@ -202,7 +202,7 @@ def build() -> Path:
         if stage.exists():
             shutil.rmtree(stage)
         stage.mkdir()
-        shutil.copytree(app, stage / "Pith.app")
+        shutil.copytree(app, stage / "Pith.app", symlinks=True)
         shutil.copy(notes, stage / "INSTALL.txt")
         dmg = dist / f"{stem}.dmg"
         _make_dmg(stage, dmg)
