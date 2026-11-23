@@ -5,6 +5,7 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+Pith.spec
 .pith-data/
 .DS_Store
 *.log

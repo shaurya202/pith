@@ -24,7 +24,34 @@ The burned-in export. The highlighted word is the one being spoken:
 
 Pith does not auto-zoom, track a face, add music, or pick the best of several takes. Those are on the roadmap.
 
-## Install
+## Download
+
+These are double-click apps. You do not install Python. ffmpeg is inside the download. The first transcription still downloads a Whisper model (base is about 150 MB) into your user folder. After that, transcription works offline.
+
+The builds are unsigned.
+
+| Computer | File | How you get it |
+| --- | --- | --- |
+| Mac, Apple silicon | `Pith-macOS-arm64.dmg` | GitHub Actions artifact, or the Release on a `v*` tag |
+| Mac, Intel | `Pith-macOS-x86_64.dmg` | same |
+| Windows 10 or 11, 64-bit | `Pith-Windows-x64.zip` | same |
+
+Open the dmg and drag Pith to Applications, or unzip the Windows zip and double-click `Pith.exe`. Each zip also has `INSTALL.txt` with the same warnings as below.
+
+**macOS Gatekeeper.** Finder says Pith is from an unidentified developer. Right-click Pith, choose **Open**, then **Open** again. A normal double-click only shows the warning.
+
+**Windows SmartScreen.** Windows may say "Windows protected your PC". Choose **More info**, then **Run anyway**. That warning is about the missing code signature. Windows 11 can open the desktop window. Windows 10 needs the Evergreen WebView2 runtime for that window. If the window cannot open, Pith opens in your browser.
+
+The Mac and Windows files are built on native runners, because PyInstaller cannot cross-compile and the speech libraries are native wheels. This repository includes:
+
+- `.github/workflows/build-apps.yml` for GitHub Actions, including when the repo is mirrored to GitHub. Pushing a tag like `v0.1.0` also attaches the files to a GitHub Release.
+- `.depot/workflows/build-apps.yml` for Depot CI on Origin. Download the job artifacts. That copy does not publish a GitHub Release.
+
+Run the workflow with **workflow_dispatch**, or push a `v*` tag. Each job builds the app and launches it far enough to answer `/api/health`.
+
+On Linux, `python scripts/package.py` writes `Pith-Linux-x86_64.zip` and `Pith-Linux-x86_64.tar.xz`. That Linux build is the one verified here: the binary launches, finds the bundled ffmpeg, and answers `/api/health`. It is not a Mac or Windows app. The verified tarball is `Pith-Linux-x86_64.tar.xz`, sha256 `08a76f276c8b3b2ffdada2b2013ffb23ac3c2f79bca41d42d4675b0f53554941`. If it arrives as `.part-aa` and `.part-ab`, join them with `cat Pith-Linux-x86_64.tar.xz.part-* > Pith-Linux-x86_64.tar.xz` before unpacking.
+
+## Install from source
 
 You need Python 3.10 or newer. You do not need to install ffmpeg yourself. Pith brings one through `imageio-ffmpeg`, and uses it only if it can encode H.264 and burn ASS captions.
 
@@ -118,16 +145,17 @@ python scripts/make_sample.py
 
 ## Package a downloadable app
 
-Build on the operating system you want to ship. A Windows build only runs on Windows, and the same is true for Mac and Linux.
+Build on the operating system the download should run on. A Windows build only runs on Windows, and the same is true for Mac and Linux. Cross-compiling is not supported.
 
 ```bash
-pip install -r requirements-dev.txt
+pip install -r requirements.txt -r requirements-dev.txt
 python scripts/package.py
+python scripts/smoke_frozen.py
 ```
 
-The app lands in `dist/Pith/`. The Whisper model is not inside it. The first transcription downloads the model into the user cache.
+`scripts/package.py` writes `dist/Pith-macOS-arm64.dmg` (and a zip of `Pith.app`) on Apple silicon, `dist/Pith-macOS-x86_64.dmg` on Intel Macs, `dist/Pith-Windows-x64.zip` on Windows, and `dist/Pith-Linux-x86_64.zip` on 64-bit Linux. The Whisper model is not inside the archive. The first transcription downloads it.
 
-On Mac, Gatekeeper warns about an unsigned app. Right-click Pith, choose Open, then Open again. On Windows, SmartScreen may say the app is unrecognized. Choose More info, then Run anyway. That warning is about the missing code signature.
+`scripts/smoke_frozen.py` runs the packaged binary, checks that fonts, the window, the sample, and ffmpeg are inside it, then starts it and requests `/api/health`.
 
 ## Roadmap
 

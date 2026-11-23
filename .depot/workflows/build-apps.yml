@@ -1,0 +1,53 @@
+# Same build as .github/workflows/build-apps.yml, for Depot CI on Origin.
+# Depot runs GitHub Actions syntax. This copy has no GitHub Release step,
+# because that step needs a GitHub token. Download the job artifacts.
+# The app is unsigned. See README for the Gatekeeper and SmartScreen steps.
+
+name: Build apps
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    name: ${{ matrix.artifact }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artifact: Pith-Windows-x64
+          - os: macos-latest
+            artifact: Pith-macOS-arm64
+          - os: macos-15-intel
+            artifact: Pith-macOS-x86_64
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Pith and PyInstaller
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Build
+        run: python scripts/package.py
+
+      - name: Launch the packaged app
+        run: python scripts/smoke_frozen.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            dist/Pith-*.zip
+            dist/Pith-*.dmg
+          if-no-files-found: error
+          retention-days: 14

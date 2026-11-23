@@ -66,6 +66,37 @@ def _setup_logging(data_dir: Path) -> None:
     )
 
 
+def _check_bundle() -> int:
+    """Used by the packaged app and by CI. Exit 0 only when the files are really there."""
+
+    from pith.media import ffmpeg_exe
+    from pith.paths import fonts_dir, samples_dir, static_dir
+
+    print(f"Pith {__version__}")
+    print(f"frozen: {bool(getattr(sys, 'frozen', False))}")
+    problems: list[str] = []
+    checks = {
+        "fonts": fonts_dir() / "Anton-Regular.ttf",
+        "window": static_dir() / "index.html",
+        "sample": samples_dir() / "talking.mp4",
+    }
+    for label, path in checks.items():
+        if path.exists():
+            print(f"{label}: {path}")
+        else:
+            problems.append(f"missing {label}: {path}")
+    try:
+        print(f"ffmpeg: {ffmpeg_exe()}")
+    except Exception as exc:
+        problems.append(str(exc))
+    if problems:
+        for problem in problems:
+            print(f"FAIL {problem}")
+        return 1
+    print("bundle ok")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Pith — cut the pauses, keep your style.")
     parser.add_argument("--port", type=int, default=0, help="Local port. 0 picks 8734 or the next free port.")
@@ -74,6 +105,11 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--no-window", action="store_true", help="Serve only. Do not open a window.")
     parser.add_argument("--browser", action="store_true", help="Open in the browser instead of a desktop window.")
     parser.add_argument("--self-test", action="store_true", help="Transcribe the sample, cut pauses, export, and exit.")
+    parser.add_argument(
+        "--check-bundle",
+        action="store_true",
+        help="Check that a packaged app can see its fonts, window, sample, and ffmpeg, then exit.",
+    )
     parser.add_argument(
         "--download-model",
         choices=["tiny", "base", "small"],
@@ -93,6 +129,9 @@ def main(argv: list[str] | None = None) -> None:
 
         code = run_self_test()
         raise SystemExit(code)
+
+    if args.check_bundle:
+        raise SystemExit(_check_bundle())
 
     data_dir = args.data_dir or default_data_dir()
     _setup_logging(data_dir)
