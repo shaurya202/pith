@@ -23,18 +23,22 @@ function clock(seconds) {
   return `${minutes}:${rest}`;
 }
 
-function toast(message) {
+function toast(message, kind) {
   const node = $("toast");
+  node.classList.remove("is-error", "is-success");
   if (!message) {
     node.hidden = true;
     return;
   }
   node.hidden = false;
   node.textContent = message;
+  if (kind === "error") node.classList.add("is-error");
+  if (kind === "success") node.classList.add("is-success");
+  node.setAttribute("role", kind === "error" ? "alert" : "status");
   clearTimeout(toast._timer);
   toast._timer = setTimeout(() => {
     node.hidden = true;
-  }, 6000);
+  }, kind === "error" ? 8000 : 5000);
 }
 
 async function api(path, options = {}) {
@@ -58,11 +62,13 @@ function showEmpty() {
   $("empty").hidden = false;
   $("editor").hidden = true;
   $("project-meta").textContent = "";
+  document.body.classList.remove("is-editing");
 }
 
 function showEditor() {
   $("empty").hidden = true;
   $("editor").hidden = false;
+  document.body.classList.add("is-editing");
 }
 
 async function boot() {
@@ -204,7 +210,10 @@ function setRendered(kind) {
 
 function markMode() {
   for (const kind of ["source", "preview", "export"]) {
-    $("mode-" + kind).classList.toggle("on", state.mode === kind);
+    const button = $("mode-" + kind);
+    const on = state.mode === kind;
+    button.classList.toggle("on", on);
+    button.setAttribute("aria-selected", on ? "true" : "false");
   }
 }
 
@@ -214,6 +223,7 @@ async function openFile(file) {
   data.append("file", file, file.name);
   toast("");
   $("progress").hidden = false;
+  $("progress").classList.remove("is-error");
   $("progress-label").textContent = "Copying the video…";
   $("progress-bar").style.width = "30%";
   try {
@@ -222,7 +232,7 @@ async function openFile(file) {
     adopt(body, { fill: true });
   } catch (error) {
     $("progress").hidden = true;
-    toast(error.message);
+    toast(error.message, "error");
   }
 }
 
@@ -232,7 +242,7 @@ async function openSample() {
     const body = await api("/api/sample", { method: "POST" });
     adopt(body, { fill: true });
   } catch (error) {
-    toast(error.message);
+    toast(error.message, "error");
   }
 }
 
@@ -279,7 +289,7 @@ function queueSettings(includeStyle) {
       const preset = (state.meta.presets || []).find((item) => item.preset === body.project.style.preset);
       $("preset-blurb").textContent = preset ? preset.blurb : "Custom. These settings no longer match a preset.";
     } catch (error) {
-      toast(error.message);
+      toast(error.message, "error");
     }
   }, 160);
 }
@@ -293,7 +303,7 @@ async function applyPreset(name) {
     });
     adopt(body, { fill: true });
   } catch (error) {
-    toast(error.message);
+    toast(error.message, "error");
   }
 }
 
@@ -358,7 +368,7 @@ function renderSpans(list, items, action, onClick, prefix) {
     const button = document.createElement("button");
     button.type = "button";
     button.textContent = action;
-    button.addEventListener("click", () => onClick(item).catch((error) => toast(error.message)));
+    button.addEventListener("click", () => onClick(item).catch((error) => toast(error.message, "error")));
     row.append(label, button);
     list.append(row);
   }
@@ -370,8 +380,8 @@ function renderTranscript() {
   root.replaceChildren();
   if (!plan.ready) {
     const note = document.createElement("p");
-    note.className = "hint";
-    note.textContent = "Transcribe to get words you can fix.";
+    note.className = "empty-transcript";
+    note.textContent = "Transcribe this clip to get words you can fix, and to cut the pauses.";
     root.append(note);
     return;
   }
@@ -403,14 +413,15 @@ function wordChip(word) {
   input.addEventListener("change", () => {
     const next = input.value.trim();
     if (next && next !== word.text) {
-      saveWord(word.id, { text: next }).catch((error) => toast(error.message));
+      saveWord(word.id, { text: next }).catch((error) => toast(error.message, "error"));
     }
   });
   const button = document.createElement("button");
   button.type = "button";
   button.textContent = word.deleted ? "Put back" : "Cut";
+  button.setAttribute("aria-label", word.deleted ? `Put back ${word.text}` : `Cut ${word.text}`);
   button.addEventListener("click", () => {
-    saveWord(word.id, { deleted: !word.deleted }).catch((error) => toast(error.message));
+    saveWord(word.id, { deleted: !word.deleted }).catch((error) => toast(error.message, "error"));
   });
   chip.append(input, button);
   return chip;
@@ -424,7 +435,7 @@ function markerChip(kind, label, action, onClick) {
   const button = document.createElement("button");
   button.type = "button";
   button.textContent = action;
-  button.addEventListener("click", () => onClick().catch((error) => toast(error.message)));
+  button.addEventListener("click", () => onClick().catch((error) => toast(error.message, "error")));
   chip.append(text, button);
   return chip;
 }
@@ -572,7 +583,7 @@ async function transcribe() {
     });
     adopt(body, { fill: false });
   } catch (error) {
-    toast(error.message);
+    toast(error.message, "error");
   }
 }
 
@@ -585,27 +596,45 @@ async function render(quality) {
     });
     adopt(body, { fill: false });
   } catch (error) {
-    toast(error.message);
+    toast(error.message, "error");
+  }
+}
+
+function setBusy(busy, label) {
+  document.body.classList.toggle("is-busy", !!busy);
+  const transcribe = $("transcribe");
+  if (!transcribe.dataset.label) transcribe.dataset.label = transcribe.textContent;
+  transcribe.disabled = !!busy;
+  transcribe.textContent = busy ? (label || "Working…") : transcribe.dataset.label;
+  if (state.plan && state.plan.ready) {
+    $("preview-button").disabled = !!busy;
+    $("export-button").disabled = !!busy;
   }
 }
 
 function watchJob() {
   const job = state.project && state.project.job;
   if (!job || job.status !== "running") {
+    setBusy(false);
     if (job && job.status === "error") {
       $("progress").hidden = false;
-      $("progress-bar").style.width = "0%";
+      $("progress").classList.add("is-error");
+      $("progress-bar").style.width = "100%";
       $("progress-label").textContent = job.error || "Something went wrong.";
+      toast(job.error || "Something went wrong.", "error");
     } else if (job && job.status === "done") {
       $("progress").hidden = true;
+      $("progress").classList.remove("is-error");
     }
     state.polling = false;
     return;
   }
   $("progress").hidden = false;
+  $("progress").classList.remove("is-error");
   const fraction = Math.max(0.05, Math.min(0.99, job.progress || 0));
   $("progress-bar").style.width = `${fraction * 100}%`;
   $("progress-label").textContent = job.message || "Working…";
+  setBusy(true, job.kind === "transcribe" ? "Transcribing…" : job.kind === "render" ? "Rendering…" : "Working…");
   if (state.polling) return;
   state.polling = true;
   poll();
@@ -626,7 +655,7 @@ async function poll() {
       return;
     }
   } catch (error) {
-    toast(error.message);
+    toast(error.message, "error");
   }
   state.polling = false;
 }
@@ -634,7 +663,7 @@ async function poll() {
 async function onJobDone(job) {
   if (job.kind === "transcribe") {
     const count = job.result && job.result.words;
-    toast(count ? `Transcript ready · ${count} words` : "Transcript ready");
+    toast(count ? `Transcript ready · ${count} words` : "Transcript ready", "success");
     fillControls(state.project);
   }
   if (job.kind === "render" && job.result) {
@@ -676,7 +705,7 @@ async function uploadReference(file) {
     adopt(body, { fill: false });
     renderReference(body.project.reference);
   } catch (error) {
-    toast(error.message);
+    toast(error.message, "error");
   }
 }
 
@@ -732,7 +761,7 @@ function bind() {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ aspect: input.value }),
-      }).then((body) => adopt(body, { fill: false })).catch((error) => toast(error.message));
+      }).then((body) => adopt(body, { fill: false })).catch((error) => toast(error.message, "error"));
     });
   }
 
@@ -746,16 +775,16 @@ function bind() {
       adopt(body, { fill: false });
       renderReference(body.project.reference);
     } catch (error) {
-      toast(error.message);
+      toast(error.message, "error");
     }
   });
   $("reference-apply").addEventListener("click", async () => {
     try {
       const body = await api(`/api/projects/${state.project.id}/reference/apply`, { method: "POST" });
       adopt(body, { fill: true });
-      toast("Starting point applied. Change anything you don't like.");
+      toast("Starting point applied. Change anything you don't like.", "success");
     } catch (error) {
-      toast(error.message);
+      toast(error.message, "error");
     }
   });
 
@@ -775,4 +804,4 @@ function bind() {
 }
 
 bind();
-boot().catch((error) => toast(error.message));
+boot().catch((error) => toast(error.message, "error"));

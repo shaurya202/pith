@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
-  <div id="progress" class="progress" hidden>
+  <div id="progress" class="progress" hidden role="status" aria-live="polite" aria-atomic="true">
     <div class="progress-track"><div id="progress-bar"></div></div>
     <p id="progress-label"></p>
   </div>
@@ -30,37 +30,43 @@
 
   <main id="empty" class="empty">
     <div class="empty-copy">
-      <p class="kicker">Free alternative to Submagic</p>
       <h1>Cut the pauses.<br>Keep your style.</h1>
       <p class="lede">
         Drop in a talking-head video. Pith transcribes it on this computer,
         shows you the dead air before removing it, and burns captions into
-        the file. Nothing is uploaded.
+        the file. A free, local alternative to Submagic — nothing is uploaded.
       </p>
     </div>
-    <div id="drop" class="drop" tabindex="0" role="button" aria-label="Choose a video">
-      <p class="drop-title">Drop an mp4 or mov</p>
-      <p class="drop-sub">Vertical or horizontal. A minute or two is a good start.</p>
+    <div class="intake">
+      <div id="drop" class="drop" tabindex="0" role="button" aria-label="Choose a video">
+        <svg class="drop-icon" width="36" height="36" viewBox="0 0 36 36" aria-hidden="true">
+          <rect x="5" y="8" width="26" height="20" rx="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/>
+          <path d="M5 22.5 13 16l6.5 5.5L24 17l7 5.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+          <circle cx="12.5" cy="14" r="1.7" fill="currentColor"/>
+        </svg>
+        <p class="drop-title">Drop an mp4 or mov</p>
+        <p class="drop-sub">Or click to choose a file. Vertical or horizontal. A minute or two is a good start.</p>
+      </div>
+      <button id="sample-button" class="btn paper" type="button">Use the sample clip</button>
     </div>
-    <button id="sample-button" class="btn paper" type="button">Use the sample clip</button>
     <section id="recent-wrap" class="recent" hidden>
       <h2>Recent</h2>
       <ul id="recent"></ul>
     </section>
     <ol class="steps">
-      <li><span>01</span> Whisper writes a word-level transcript locally.</li>
-      <li><span>02</span> Pauses longer than your threshold are marked, not deleted yet.</li>
-      <li><span>03</span> Pick a caption look, fix a typo, export an mp4.</li>
+      <li><span>1</span> Whisper writes a word-level transcript locally.</li>
+      <li><span>2</span> Pauses longer than your threshold are marked, not deleted yet.</li>
+      <li><span>3</span> Pick a caption look, fix a typo, export an mp4.</li>
     </ol>
   </main>
 
   <main id="editor" class="workspace" hidden>
     <section class="stage-col">
       <div class="player-bar">
-        <div class="modes" role="tablist">
-          <button id="mode-source" class="mode on" type="button">Original</button>
-          <button id="mode-preview" class="mode" type="button" disabled>Preview</button>
-          <button id="mode-export" class="mode" type="button" disabled>Export</button>
+        <div class="modes" role="tablist" aria-label="Playback source">
+          <button id="mode-source" class="mode on" type="button" role="tab" aria-selected="true">Original</button>
+          <button id="mode-preview" class="mode" type="button" role="tab" aria-selected="false" disabled>Preview</button>
+          <button id="mode-export" class="mode" type="button" role="tab" aria-selected="false" disabled>Export</button>
         </div>
         <label class="skip"><input id="skip-cuts" type="checkbox" checked> Skip pauses while playing</label>
       </div>
@@ -185,12 +191,12 @@
           <button id="export-button" class="btn paper" type="button">Export mp4</button>
         </div>
         <p id="export-result" class="hint"></p>
-        <a id="download" class="btn" hidden download>Download the mp4</a>
+        <a id="download" class="btn paper" hidden download>Download the mp4</a>
       </section>
     </aside>
   </main>
 
-  <p id="toast" class="toast" role="status" hidden></p>
+  <p id="toast" class="toast" role="status" aria-live="polite" hidden></p>
   <script src="/static/app.js"></script>
 </body>
 </html>
