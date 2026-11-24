@@ -10,4 +10,4 @@ A free, local alternative to Submagic. The pipeline is:
 The window is a small local website (pith.server) opened by pith.cli.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
